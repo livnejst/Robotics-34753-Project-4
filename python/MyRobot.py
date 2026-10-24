@@ -195,10 +195,6 @@ class MyRobot:
             self.joint_angle_error[i] = deg - self.joint_angles[i]
         return j_a
 
-    # --------------------------- Kinematics (FK / IK) -------------------------
-   # Please input your forward and inverse kinematics here for position and pose conversion to joint angles.
-   # The output should be in the format of an array
-
     # ------------------------------- Motion -----------------------------------
     def move_j(self, j1_deg, j2_deg, j3_deg, j4_deg, wait=True, tol_deg=2.0, poll_period=0.05):
         # Limits
