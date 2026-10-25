@@ -40,6 +40,7 @@ class MyRobot:
     TICKS_PER_DEG = 1.0 / 0.29        # ≈ 3.448275862 ticks per degree
     DEG_PER_TICK = 0.29
 
+    Z_MIN = 20                      # Minimum height of all joints, in mm.
     # ------------------------------- Init -------------------------------------
     def __init__(self):
         # Robot + kinematics state
@@ -109,6 +110,13 @@ class MyRobot:
             else:
                 raise ValueError("Angle Limits Reached, Min/Max: ±100°")
         return deg
+
+    def check_zmin(self, q_deg):
+        q_rad = np.radians(q_deg)
+        for frame in (2, 3, 4, 5):
+            z = kin.direct_kinematics(q_rad, frame)[2, 3]
+            if z < self.Z_MIN:
+                raise ValueError(f"Frame {frame} would be at z = {z:.1f} mm (< Z_MIN = {self.Z_MIN} mm)")
 
     # --------------------------- Motor I/O wrappers --------------------------- DO NOT TOUCH
     def _write1(self, dxl_id, addr, value):
@@ -205,6 +213,8 @@ class MyRobot:
         for i in range(4):
             desired[i] = self._check_limits_one(desired[i], i)
 
+        self.check_zmin(desired)
+        
         # Smooth speed option
         if self.use_smooth_speed_flag:
             self.smooth_speed(desired - self.joint_angles)
