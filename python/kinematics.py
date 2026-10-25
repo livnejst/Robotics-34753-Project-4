@@ -43,6 +43,9 @@ def direct_kinematics(q, frame=4): # frame = 4 means that we are looking for the
         raise ValueError
 
 def inverse_kinematics(x, x4z):
+    if abs(x4z) > 1:
+        raise ValueError(f"x4z = {x4z} is not valid, it has to be between -1, 1")
+
     q = np.zeros(4)
     
     theta1 = np.arctan2(x[1],x[0])
@@ -59,6 +62,9 @@ def inverse_kinematics(x, x4z):
     s = o3[2] - DH_TABLE[2][0]
 
     cos3 = (r**2 + s**2 - DH_TABLE[1][1]**2 - DH_TABLE[1][2]**2) / (2*DH_TABLE[1][1]*DH_TABLE[1][2])
+    if cos3 > 1:            # If cos3 > 1 means that with our measures it is not possible to reach the point that we want to reach
+        raise ValueError(f"cos3 = {cos3} is not valid, it has to be between -1, 1")
+    
     sin3 = -1 * np.sqrt(1- cos3**2)
     theta3 = np.arctan2(sin3, cos3)
     q[2] = theta3
@@ -74,4 +80,4 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, suppress=True)
     print(direct_kinematics([0.3, -0.5, 0.8, 0.2]))
 
-    print(inverse_kinematics([0, 0, 286, 0], 1))
+    print(inverse_kinematics([0, 0, 2867, 0], 1))
