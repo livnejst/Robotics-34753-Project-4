@@ -9,6 +9,9 @@ import time
 
 from dynamixel_sdk import PortHandler, PacketHandler
 
+# --- Other files -----------------------
+
+import kinematics as kin
 
 def cosd(x_deg):  # cos with degrees
     return math.cos(math.radians(x_deg))
@@ -206,9 +209,8 @@ class MyRobot:
         if self.use_smooth_speed_flag:
             self.smooth_speed(desired - self.joint_angles)
 
-        # Update internal & FK
-        #self.joint_angles = desired.copy()
-        #self.forward(desired)
+        # Update internal
+        self.joint_angles = desired.copy()
 
         # Apply motor offsets for command
         cmd_deg = desired + self.joint_offsets
@@ -231,13 +233,17 @@ class MyRobot:
                 break
             time.sleep(poll_period)
 
-    #def move_c(self, x, y, z, pitch_deg, **kwargs):
-     #   j_deg = self.inverse(x, y, z, math.radians(pitch_deg))
-      #  self.move_j(j_deg[0], j_deg[1], j_deg[2], j_deg[3], **kwargs)
+    def move_c(self, x, y, z, pitch_deg, **kwargs):
+        x_vec = np.array([x, y, z], dtype=float)
+        x4z = cosd(pitch_deg)                       # The pitch angle is the inclination of the end effector. 0 = vertical, 90 = horizontal
+        j_rad = kin.inverse_kinematics(x_vec, x4z)
+        j_deg = j_rad * (180.0 / math.pi)
+        self.move_j(j_deg[0], j_deg[1], j_deg[2], j_deg[3], **kwargs)
 
-    #def read_ee_position(self):
-     #   j_a = self.read_joint_angles()
-      #  return self.forward(j_a)
+    def read_ee_position(self):
+        j_a = self.read_joint_angles()
+        j_r = np.radians(j_a)                       # Convert to radians for kinematics
+        return kin.direct_kinematics(j_r)
 
     # --------------------------- History / Macros ------------------------------
     def record_configuration(self):
