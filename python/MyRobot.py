@@ -31,7 +31,7 @@ class MyRobot:
 
     PROTOCOL_VERSION = 1.0
     BAUDRATE = 1_000_000
-    DEVICENAME = "COM8"              # e.g., Windows: 'COM3' | Linux: '/dev/ttyUSB0' | Mac: '/dev/tty.usbserial-*'
+    DEVICENAME = "COM10"              # e.g., Windows: 'COM3' | Linux: '/dev/ttyUSB0' | Mac: '/dev/tty.usbserial-*'
 
     TORQUE_ENABLE = 1
     TORQUE_DISABLE = 0
@@ -50,10 +50,10 @@ class MyRobot:
         self.joint_pos = np.zeros((4, 4))
         self.use_smooth_speed_flag = False
 
-        # deg limits: [-130,130], [-180,0], [-140,140], [-140,100]
-        self.joint_limits = np.array([[-90, 90], [-180, 180], [-140, 140], [-140, 140]])
+        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there.
+        self.joint_limits = np.array([[-145, 145], [-115, 85], [-130, 120], [-100, 60]])
 
-        # Motor offsets (deg)
+        # Motor offsets (deg). We leave the ones that the template gives
         self.joint_offsets = np.array([150, 150, 150, 150], dtype=float)
 
         self.joint_angle_error = np.array([0.0, 0.0, 0.0, 0.0])
@@ -325,7 +325,7 @@ if __name__ == "__main__":
 #You might need to adjust the offsets in the code above to make the zero point suit your needs.
 #Just comment out the code snippet, input desired joint angle sequence in robot.move_j() and run.
 
-'''
+
 
 if __name__ == "__main__":
     import time
@@ -408,4 +408,4 @@ if __name__ == "__main__":
             robot.disable_motors()
             print("\nMotors disabled. Program finished.")
 
-'''
+
