@@ -15,6 +15,7 @@ POINTS = [
 
 robot = MyRobot()                                   # moves to (0, 0, 0, 0)
 cam = Camera()
+cam.cap.set(cv2.CAP_PROP_SETTINGS, 1)
 if robot.init_status:
     try:
         for i, (x, y, z, pitch) in enumerate(POINTS, start=1):

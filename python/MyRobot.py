@@ -31,7 +31,7 @@ class MyRobot:
 
     PROTOCOL_VERSION = 1.0
     BAUDRATE = 1_000_000
-    DEVICENAME = "COM10"              # e.g., Windows: 'COM3' | Linux: '/dev/ttyUSB0' | Mac: '/dev/tty.usbserial-*'
+    DEVICENAME = "COM8"              # e.g., Windows: 'COM3' | Linux: '/dev/ttyUSB0' | Mac: '/dev/tty.usbserial-*'
 
     TORQUE_ENABLE = 1
     TORQUE_DISABLE = 0
@@ -54,7 +54,7 @@ class MyRobot:
         self.joint_limits = np.array([[-145, 145], [-115, 85], [-130, 120], [-100, 60]])
 
         # Motor offsets (deg). We leave the ones that the template gives
-        self.joint_offsets = np.array([150, 150, 150, 150], dtype=float)
+        self.joint_offsets = np.array([150, 147, 133, 150], dtype=float)
 
         self.joint_angle_error = np.array([0.0, 0.0, 0.0, 0.0])
         self.init_status = 0

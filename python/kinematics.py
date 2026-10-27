@@ -9,10 +9,10 @@ DH_TABLE = np.array([[math.pi/2, 0, 0, 0], # twist, torsion
                     ]) 
 
 H45 = np.array([[1, 0, 0, -15],
-                      [0, 1, 0,  45],
-                      [0, 0, 1,   0],
-                      [0, 0, 0,   1],
-                    ], dtype=float)
+                [0, 1, 0,  45],
+                [0, 0, 1,   0],
+                [0, 0, 0,   1],
+                ], dtype=float)
 
 def dh_matrix(t, r, a, d):
     dh = np.array([[np.cos(t), -np.sin(t)*np.cos(r),  np.sin(t)*np.sin(r), a*np.cos(t)],
