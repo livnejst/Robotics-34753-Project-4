@@ -14,9 +14,11 @@ new_camera_matrix = np.array([[641.85616876,   0.        , 271.69745724],
                           [  0.        ,   0.        ,   1.        ]])
 
 class Camera:
-    def __init__(self):
-        self.index = 2      #Index of the robot camera in my PC
-        self.cap = cv2.VideoCapture(self.index, cv2.CAP_DSHOW)
+    def __init__(self, index=None, api_pref=None):
+        self.index = 2 if index is None else index      #Index of the robot camera in my PC
+        self.api_pref = cv2.CAP_DSHOW if api_pref is None else api_pref
+        
+        self.cap = cv2.VideoCapture(self.index, self.api_pref)
         if not self.cap.isOpened():
             raise RuntimeError("CAMERA COULD NOT OPEN")
 
