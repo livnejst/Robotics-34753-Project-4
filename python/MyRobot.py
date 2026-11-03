@@ -40,7 +40,7 @@ class MyRobot:
     TICKS_PER_DEG = 1.0 / 0.29        # ≈ 3.448275862 ticks per degree
     DEG_PER_TICK = 0.29
 
-    Z_MIN = 20                      # Minimum height of all joints, in mm.
+    Z_MIN =0                    # Minimum height of all joints, in mmTODO
     # ------------------------------- Init -------------------------------------
     def __init__(self, device_name=None):
         self.device_name = device_name or self.DEVICENAME
@@ -52,8 +52,8 @@ class MyRobot:
         self.joint_pos = np.zeros((4, 4))
         self.use_smooth_speed_flag = False
 
-        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there.
-        self.joint_limits = np.array([[-145, 145], [-115, 85], [-130, 120], [-100, 60]])
+        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there. TODO
+        self.joint_limits = np.array([[-110, 70], [-110, 100], [-130, 130], [-95, 70]])
 
         # Motor offsets (deg). We leave the ones that the template gives
         self.joint_offsets = np.array([150, 147, 133, 150], dtype=float)

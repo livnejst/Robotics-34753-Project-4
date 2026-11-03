@@ -28,7 +28,7 @@ def init_robot_pos(robot, cam):
 
         xyz4 = kin.direct_kinematics(np.radians(q), frame=4)[0:3, 3]  # stylus joint
         xyz5 = kin.direct_kinematics(np.radians(q), frame=5)[0:3, 3]  # camera frame
-
+        cv2.waitKey(1000)
         print("Joint angles (deg):", q)
         print("Stylus xyz (mm)   :", xyz4)
         print("Camera xyz (mm)   :", xyz5)
@@ -143,13 +143,13 @@ Enter your choice (1, 2, or 3): """)
         return
 
     if find_pos:
-        robot = MyRobot(device_name="/dev/ttyACM0")
+        robot = MyRobot(device_name="COM8")
 
         if not robot.init_status:
             print("Robot initialization failed. Exiting...")
             return
 
-    cam = Camera(index=0, api_pref=cv2.CAP_V4L2)
+    cam = Camera(index=2, api_pref=cv2.CAP_DSHOW)
 
     try:
         img = None

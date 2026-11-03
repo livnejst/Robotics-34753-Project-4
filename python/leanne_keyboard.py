@@ -8,9 +8,9 @@ from camera import Camera
 from MyRobot import MyRobot
 
 # TODO: find keyboard viewing position
-VIEW_POS = (..., ..., ..., ...)
+VIEW_POS = (  7.47,   16.85,  -74.71, -103.6)
 
-KEY_W, KEY_H = 18, 18
+KEY_W, KEY_H = 15, 15
 
 KEY_OFFSET_X, KEY_OFFSET_Y = 5, -5
 
@@ -36,13 +36,19 @@ BOT_ROW_CHARS = "ZXCVBNM"
 
 IMAGE_PATH = "python/keyboard_images/keyboard_20261029_103154_raw.png"
 
-BINARY_THRESHOLD = 185
+BINARY_THRESHOLD = 195
 ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 MAX_ASPECT = 2
 MIN_CONF = 0.95
 
 PHRASE = "hello world"
 
+H_5C = np.array(
+    [[0, 0, 1, 0],
+     [0, -1, 0, 0],
+     [1, 0, 0, 0],
+     [0, 0, 0, 1]], dtype=float
+)
 
 reader = easyocr.Reader(["en"], gpu=False)
 
@@ -92,6 +98,11 @@ def read_keys(img):
 
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    debug = img.copy()
+    cv2.drawContours(debug, contours, -1, (0, 255, 0), 2)
+    cv2.imshow("contours", debug)
+    cv2.waitKey(1)
+
     keys = {}
 
     for contour in contours:
@@ -116,7 +127,6 @@ def read_keys(img):
             allowlist=ALLOWLIST,
             detail=1,
         )
-
         if not result or len(result) != 1:
             continue
 
@@ -130,8 +140,12 @@ def read_keys(img):
             keys.pop(text, None)
             continue
 
-        keys[text] = (x, y)
+        cv2.rectangle(img, (x,y), (x+w, y+h), (0,0,255),1)
 
+        keys[text] = (x, y)
+    
+    cv2.imshow("h", img)
+    cv2.waitKey(100)
     return keys
 
 
@@ -178,7 +192,7 @@ def get_keys_in_cam_frame(H_ck, keyboard_map):
 
 def get_key_in_robot_frame(H_ck, key, keyboard_map, q_deg):
     # keyboard pose in the robot base frame
-    H_rk = kin.direct_kinematics(np.radians(q_deg), frame=5) @ H_ck
+    H_rk = kin.direct_kinematics(np.radians(q_deg), frame=5) @ H_5C @ H_ck
 
     x, y, z = keyboard_map[key]
     pos_k = np.array([x + KEY_OFFSET_X, y + KEY_OFFSET_Y, z, 1]).reshape(4, 1)
@@ -196,10 +210,41 @@ def get_keys_in_robot_frame(H_ck, keyboard_map, q_deg):
     return robot_frame_map
 
 
-def main():
-    cam = Camera(index=0, api_pref=cv2.CAP_V4L2)
-    robot = MyRobot(device_name="/dev/ttyACM0")
+def draw_target_key(img, H_ck, key, keyboard_map):
+    x, y, z = keyboard_map[key]
 
+    # corners of the target box, followed by the aim point
+    pts_k = np.array(
+        [
+            [x, y, z, 1],
+            [x + 2 * KEY_OFFSET_X, y, z, 1],
+            [x + 2 * KEY_OFFSET_X, y + 2 * KEY_OFFSET_Y, z, 1],
+            [x, y + 2 * KEY_OFFSET_Y, z, 1],
+            [x + KEY_OFFSET_X, y + KEY_OFFSET_Y, z, 1],
+        ],
+        dtype=np.float64,
+    )
+
+    # points are already in the camera frame, so rvec and tvec are zero
+    pts_c = (H_ck @ pts_k.T).T[:, :3]
+    pts_px, _ = cv2.projectPoints(
+        pts_c, np.zeros(3), np.zeros(3), camera_matrix, dist
+    )
+    pts_px = pts_px.reshape(-1, 2)
+
+    x0, y0 = np.round(pts_px[:4].min(axis=0)).astype(int).tolist()
+    x1, y1 = np.round(pts_px[:4].max(axis=0)).astype(int).tolist()
+    u, v = np.round(pts_px[4]).astype(int).tolist()
+
+    cv2.rectangle(img, (x0, y0), (x1, y1), (0, 255, 0), 2)
+    cv2.drawMarker(img, (u, v), (0, 255, 0), cv2.MARKER_CROSS, 12, 2)
+
+    return u, v
+
+def main():
+    cam = Camera(index=2, api_pref=cv2.CAP_DSHOW)
+    robot = MyRobot(device_name="COM8")
+    print(kin.direct_kinematics(np.radians(VIEW_POS)))
     if not robot.init_status:
         print("Robot initialization failed. Exiting...")
         return
@@ -219,11 +264,11 @@ def main():
 
             print(f"Key: {key}")
 
-            robot.move_c(*VIEW_POS)
-
+            robot.move_j(*VIEW_POS)
+            time.sleep(1)
             # img = cv2.imread(IMAGE_PATH)
+            cam.read()
             img = cam.read()
-
             keys = read_keys(img)
 
             if len(keys) < 3:
@@ -231,10 +276,17 @@ def main():
                 continue
 
             print(f"Detected {len(keys)} keys")
-
+            
             H_ck = get_cam_keyboard_H(keys, keyboard_map)
 
             key_cam_pos = get_key_in_cam_frame(H_ck, key, keyboard_map)
+
+            target_px = draw_target_key(img, H_ck, key, keyboard_map)
+            print(f"Reprojected pixel coords: {target_px}")
+            cv2.imshow("h", img)
+            cv2.waitKey(100)
+
+            q_deg = robot.read_joint_angles()
 
             q_deg = robot.read_joint_angles()
             key_pos = get_key_in_robot_frame(H_ck, key, keyboard_map, q_deg)
