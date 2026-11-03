@@ -42,7 +42,9 @@ class MyRobot:
 
     Z_MIN = 20                      # Minimum height of all joints, in mm.
     # ------------------------------- Init -------------------------------------
-    def __init__(self):
+    def __init__(self, device_name=None):
+        self.device_name = device_name or self.DEVICENAME
+
         # Robot + kinematics state
         self.motor_ids = [1, 2, 3, 4]
         self.forward_transform = np.zeros((4, 4)) # For direct kinematics
@@ -65,7 +67,7 @@ class MyRobot:
 
         # --- SDK setup --- DO NOT TOUCH
         try:
-            self.port_handler = PortHandler(self.DEVICENAME)
+            self.port_handler = PortHandler(self.device_name)
             self.packet_handler = PacketHandler(self.PROTOCOL_VERSION)
 
             if self.port_handler.openPort():
