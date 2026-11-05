@@ -254,6 +254,27 @@ class MyRobot:
         j_r = np.radians(j_a)                       # Convert to radians for kinematics
         return kin.direct_kinematics(j_r)
 
+    def wait_settled(self, tol=0.3, period=0.1, timeout=5.0):
+        count = 0
+
+        t0 = time.time()
+        prev = self.read_joint_angles()
+
+        while time.time() - t0 < timeout and count < 5:
+            time.sleep(period)
+
+            cur = self.read_joint_angles()
+
+            if np.all(np.abs(cur - prev) < tol):
+                count += 1
+            else:
+                count = 0
+
+            prev = cur
+            
+        return count >= 5
+
+
     # --------------------------- History / Macros ------------------------------
     def record_configuration(self):
         entry = {

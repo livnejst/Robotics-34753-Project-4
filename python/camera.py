@@ -1,18 +1,31 @@
-import cv2
-import numpy as np
 import os
 from datetime import datetime
 from config import Config
 
-camera_matrix = np.array([[676.65668327,   0.        , 290.95785852],
-                          [  0.        , 675.22254615, 232.87089645],
-                          [  0.        ,   0.        ,   1.        ]])
+import cv2
+import easyocr
+import numpy as np
 
-dist = np.array([[-0.22241378, 1.62268073, 0.00668074, -0.02273341, -3.49198783]])
+ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+MAX_ASPECT = 2
+MIN_CONF = 0.9
+MIN_AREA = 5*5
+
+
+camera_matrix = np.array(
+    [
+        [662.4474231057976, 0, 350.98189014851386],
+        [0, 660.071481472615, 222.31312503748862],
+        [0, 0, 1],
+    ]
+)
+dist = np.array([[-0.011341169941478515, 0.03010347390242609, 0, 0, 0]])
 
 new_camera_matrix = np.array([[641.85616876,   0.        , 271.69745724],
                           [  0.        , 650.92799605, 235.33183707],
                           [  0.        ,   0.        ,   1.        ]])
+
+reader = easyocr.Reader(["da"], gpu=False)
 
 class Camera:
     def __init__(self, index=None):
@@ -34,6 +47,97 @@ class Camera:
         if not ok:
             raise RuntimeError("COULD NOT READ FRAME")
         return frame        
+
+    @staticmethod
+    def ocr_keys(img, thresh, draw=False):
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        _, binary = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
+
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if draw:
+            letters_img = img.copy()
+            contours_img = img.copy()
+            cv2.drawContours(contours_img, contours, -1, (0, 255, 0), 2)
+            cv2.imshow("contours", contours_img)
+            cv2.waitKey(1)
+
+        keys = {}
+
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+
+            if h / w > MAX_ASPECT or w / h > MAX_ASPECT or w * h < MIN_AREA:
+                continue
+
+            crop = binary[y : y + h, x : x + w]
+
+            # invert to black-on-white, pad, upscale ~4x for the recognizer
+            padded = cv2.copyMakeBorder(
+                255 - crop, 15, 15, 15, 15, cv2.BORDER_CONSTANT, value=255
+            )
+            padded = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+
+            big_h, big_w = padded.shape
+            result = reader.recognize(
+                padded,
+                horizontal_list=[[0, big_w - 1, 0, big_h - 1]],
+                free_list=[],
+                allowlist=ALLOWLIST + "ÆÅØ",
+                detail=1,
+            )
+
+            if not result or len(result) != 1:
+                continue
+
+            text, conf = result[0][1], result[0][2]
+
+            if draw and conf > 0.5:
+                cv2.rectangle(letters_img, (x, y), (x + w, y + h), (0, 0, 255), 1)
+                cv2.putText(
+                    letters_img, f"{text} ({conf:.2f})", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1
+                )
+
+            if len(text) != 1 or conf < MIN_CONF or text not in ALLOWLIST:
+                continue
+
+            img_w = img.shape[1]
+            if (text == "A" or text == "E") and x > img_w / 2:
+                # discard A/E if they are mistaken for the Å/Æ keys on the right side of the keyboard
+                continue
+
+            if text in keys:
+                # remove duplicate keys
+                # only replace with none if saved conf is lower than 0.99 and current conf is lower than 0.99
+                # if saved conf is higher than 0.99 and higher than current conf, keep saved
+                # if current conf is higher than 0.99 and higher than saved conf, replace with current
+
+                saved_conf = keys[text][0] or 0
+                min_conf = 0.99
+
+                if conf < min_conf and saved_conf < min_conf:
+                    keys[text] = (None, (None, None), (None, None))
+                    continue
+                elif saved_conf > min_conf and saved_conf > conf:
+                    continue
+                # elif conf > min_conf and conf > saved_conf:
+                #     pass
+
+            keys[text] = (conf, (x, y), (w, h))
+
+        detected_keys = {k: v for k, v in keys.items() if v[0] is not None}
+
+        if draw:
+            for k, (conf, (x, y), (w, h)) in detected_keys.items():
+                cv2.rectangle(letters_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.putText(
+                    letters_img, f"{k} ({conf:.2f})", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
+                )
+
+            cv2.imshow("letters", letters_img)
+            cv2.waitKey(1)
+
+        return detected_keys
 
     def keyboard_picture(self, out_dir="keyboard_images", flush=5):
         # Discard buffered frames so we get the image from NOW

@@ -1,14 +1,13 @@
 import time
 
 import cv2
-import easyocr
 import kinematics as kin
 import numpy as np
-from camera import Camera
+from camera import Camera, camera_matrix, dist
 from MyRobot import MyRobot
 
 # TODO: find keyboard viewing position
-VIEW_POS = (  7.47,   16.85,  -74.71, -103.6)
+VIEW_POS = (7.47, 16.85, -74.71, -103.6)
 
 KEY_W, KEY_H = 15, 15
 
@@ -37,29 +36,10 @@ BOT_ROW_CHARS = "ZXCVBNM"
 IMAGE_PATH = "python/keyboard_images/keyboard_20261029_103154_raw.png"
 
 BINARY_THRESHOLD = 195
-ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-MAX_ASPECT = 2
-MIN_CONF = 0.95
 
 PHRASE = "hello world"
 
-H_5C = np.array(
-    [[0, 0, 1, 0],
-     [0, -1, 0, 0],
-     [1, 0, 0, 0],
-     [0, 0, 0, 1]], dtype=float
-)
-
-reader = easyocr.Reader(["en"], gpu=False)
-
-camera_matrix = np.array(
-    [
-        [662.4474231057976, 0, 350.98189014851386],
-        [0, 660.071481472615, 222.31312503748862],
-        [0, 0, 1],
-    ]
-)
-dist = np.array([[-0.011341169941478515, 0.03010347390242609, 0, 0, 0]])
+H_5C = np.array([[0, 0, 1, 0], [0, -1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]], dtype=float)
 
 
 # keyboard frame's origin is at the bottom left corner
@@ -90,63 +70,6 @@ def generate_keyboard_map():
     }
 
     return keyboard_map
-
-
-def read_keys(img):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, BINARY_THRESHOLD, 255, cv2.THRESH_BINARY)
-
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    debug = img.copy()
-    cv2.drawContours(debug, contours, -1, (0, 255, 0), 2)
-    cv2.imshow("contours", debug)
-    cv2.waitKey(1)
-
-    keys = {}
-
-    for contour in contours:
-        x, y, w, h = cv2.boundingRect(contour)
-
-        if h / w > MAX_ASPECT or w / h > MAX_ASPECT:
-            continue
-
-        crop = binary[y : y + h, x : x + w]
-
-        # invert to black-on-white, pad, upscale ~4x for the recognizer
-        padded = cv2.copyMakeBorder(
-            255 - crop, 15, 15, 15, 15, cv2.BORDER_CONSTANT, value=255
-        )
-        padded = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-
-        big_h, big_w = padded.shape
-        result = reader.recognize(
-            padded,
-            horizontal_list=[[0, big_w - 1, 0, big_h - 1]],
-            free_list=[],
-            allowlist=ALLOWLIST,
-            detail=1,
-        )
-        if not result or len(result) != 1:
-            continue
-
-        text, conf = result[0][1], result[0][2]
-
-        if len(text) != 1 or conf < MIN_CONF:
-            continue
-
-        if text in keys:
-            # remove duplicate keys
-            keys.pop(text, None)
-            continue
-
-        cv2.rectangle(img, (x,y), (x+w, y+h), (0,0,255),1)
-
-        keys[text] = (x, y)
-    
-    cv2.imshow("h", img)
-    cv2.waitKey(100)
-    return keys
 
 
 def get_cam_keyboard_H(detected_keys, keyboard_map):
@@ -227,9 +150,7 @@ def draw_target_key(img, H_ck, key, keyboard_map):
 
     # points are already in the camera frame, so rvec and tvec are zero
     pts_c = (H_ck @ pts_k.T).T[:, :3]
-    pts_px, _ = cv2.projectPoints(
-        pts_c, np.zeros(3), np.zeros(3), camera_matrix, dist
-    )
+    pts_px, _ = cv2.projectPoints(pts_c, np.zeros(3), np.zeros(3), camera_matrix, dist)
     pts_px = pts_px.reshape(-1, 2)
 
     x0, y0 = np.round(pts_px[:4].min(axis=0)).astype(int).tolist()
@@ -240,6 +161,7 @@ def draw_target_key(img, H_ck, key, keyboard_map):
     cv2.drawMarker(img, (u, v), (0, 255, 0), cv2.MARKER_CROSS, 12, 2)
 
     return u, v
+
 
 def main():
     cam = Camera()
@@ -265,28 +187,28 @@ def main():
             print(f"Key: {key}")
 
             robot.move_j(*VIEW_POS)
-            time.sleep(1)
-            # img = cv2.imread(IMAGE_PATH)
-            cam.read()
-            img = cam.read()
-            keys = read_keys(img)
+            robot.wait_settled()
 
-            if len(keys) < 3:
+            img = cam.read()
+            # img = cv2.imread(IMAGE_PATH)
+
+            ocr_keys = Camera.ocr_keys(img, thresh=BINARY_THRESHOLD, draw=True)
+            keys = {k: v[1] for k, v in ocr_keys.items()}
+
+            if len(keys) < 4:
                 print("Not enough keys detected. Skipping...")
                 continue
 
             print(f"Detected {len(keys)} keys")
-            
+
             H_ck = get_cam_keyboard_H(keys, keyboard_map)
 
             key_cam_pos = get_key_in_cam_frame(H_ck, key, keyboard_map)
 
             target_px = draw_target_key(img, H_ck, key, keyboard_map)
             print(f"Reprojected pixel coords: {target_px}")
-            cv2.imshow("h", img)
-            cv2.waitKey(100)
-
-            q_deg = robot.read_joint_angles()
+            cv2.imshow("reprojected", img)
+            cv2.waitKey(1)
 
             q_deg = robot.read_joint_angles()
             key_pos = get_key_in_robot_frame(H_ck, key, keyboard_map, q_deg)
@@ -302,15 +224,15 @@ def main():
             print()
 
             robot.move_c(*hover_pos, STYLUS_DOWN_PITCH)
-            time.sleep(0)
+            time.sleep(1)
             robot.move_c(*press_pos, STYLUS_DOWN_PITCH)
             time.sleep(0)
             robot.move_c(*hover_pos, STYLUS_DOWN_PITCH)
-            time.sleep(0)
+            time.sleep(1)
     finally:
+        robot.disable_motors()
         cam.cap.release()
         cv2.destroyAllWindows()
-        robot.disable_motors()
 
 
 if __name__ == "__main__":
