@@ -1,6 +1,3 @@
-import os
-import sys
-import inspect
 import math
 import numpy as np
 import time
@@ -40,7 +37,7 @@ class MyRobot:
     TICKS_PER_DEG = 1.0 / 0.29        # ≈ 3.448275862 ticks per degree
     DEG_PER_TICK = 0.29
 
-    Z_MIN =0                    # Minimum height of all joints, in mmTODO
+    Z_MIN =0                    # Minimum height of all joints, in mm TODO
     # ------------------------------- Init -------------------------------------
     def __init__(self, device_name=None):
         self.device_name = device_name or self.DEVICENAME
@@ -52,10 +49,10 @@ class MyRobot:
         self.joint_pos = np.zeros((4, 4))
         self.use_smooth_speed_flag = False
 
-        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there. TODO
+        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there.
         self.joint_limits = np.array([[-110, 70], [-110, 100], [-130, 130], [-95, 70]])
 
-        # Motor offsets (deg). We leave the ones that the template gives
+        # Motor offsets (deg). We have calculated them
         self.joint_offsets = np.array([150, 147, 133, 150], dtype=float)
 
         self.joint_angle_error = np.array([0.0, 0.0, 0.0, 0.0])
@@ -65,7 +62,7 @@ class MyRobot:
         self.motor_speed = np.array([0.1, 0.1, 0.1, 0.1])   # [0..1]
         self.motor_torque = np.array([1.0, 1.0, 1.0, 1.0])  # [0..1]
 
-        # --- SDK setup --- DO NOT TOUCH
+        # --- SDK setup --- DO NOT TOCH
         try:
             self.port_handler = PortHandler(self.device_name)
             self.packet_handler = PacketHandler(self.PROTOCOL_VERSION)
@@ -105,12 +102,10 @@ class MyRobot:
     def _check_limits_one(self, deg, idx):
         lo, hi = self.joint_limits[idx]
         if not (lo <= deg <= hi):
-            if idx == 0:
-                raise ValueError("Angle Limits for first Axis Reached, Min/Max: ±130°")
-            elif idx == 1:
-                raise ValueError("Angle Limits for second Axis Reached, Min/Max: [−180°, 0°]")
-            else:
-                raise ValueError("Angle Limits Reached, Min/Max: ±100°")
+            raise ValueError(
+                f"Angle limits for joint {idx + 1} reached: {deg:.1f}° "
+                f"(Min/Max: [{lo:g}°, {hi:g}°])"
+            )
         return deg
 
     def check_zmin(self, q_deg):
@@ -161,7 +156,7 @@ class MyRobot:
         for i, dxl_id in enumerate(self.motor_ids):
             s = float(speeds[i])
             if 0 < s <= 1:
-                raw = int(round(s * 1023))
+                raw = max(1, int(round(s * 1023))) # This is done for avoiding that slow speeds get rounded to 0 and then they are really high speeds
                 self._write2(dxl_id, self.ADDR_MX_MOVING_SPEED, raw)
             else:
                 print("Movement speed out of range, enter value between (0, 1].")
@@ -327,6 +322,7 @@ if __name__ == "__main__":
 #You might need to adjust the offsets in the code above to make the zero point suit your needs.
 #Just comment out the code snippet, input desired joint angle sequence in robot.move_j() and run.
 
+'''
 
 
 if __name__ == "__main__":
@@ -411,3 +407,4 @@ if __name__ == "__main__":
             print("\nMotors disabled. Program finished.")
 
 
+'''

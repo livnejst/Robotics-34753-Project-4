@@ -2,8 +2,8 @@ import numpy as np
 import math
 
 # --- Constants of our robot ---
-DH_TABLE = np.array([[math.pi/2, 0, 0, 0], # twist, torsion
-                     [0, 93, 93, 50],       # alfa
+DH_TABLE = np.array([[math.pi/2, 0, 0, 0],  # twist, torsion
+                     [0, 93, 93, 50],       # alfa, link length
                      [50, 0, 0, 0],         # d, link offset
                      [0, math.pi/2, 0, 0],  # offsets
                     ]) 
