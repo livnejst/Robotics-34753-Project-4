@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 from datetime import datetime
+from config import Config
 
 camera_matrix = np.array([[676.65668327,   0.        , 290.95785852],
                           [  0.        , 675.22254615, 232.87089645],
@@ -14,11 +15,17 @@ new_camera_matrix = np.array([[641.85616876,   0.        , 271.69745724],
                           [  0.        ,   0.        ,   1.        ]])
 
 class Camera:
-    def __init__(self, index=None, api_pref=None):
-        self.index = 2 if index is None else index      #Index of the robot camera in my PC
-        self.api_pref = cv2.CAP_DSHOW if api_pref is None else api_pref
-        
-        self.cap = cv2.VideoCapture(self.index, self.api_pref)
+    def __init__(self, index=None):
+        config = Config()
+
+        self.index = config.index if index is None else index      #Index of the robot camera in my PC
+
+        api_pref = cv2.CAP_DSHOW if config.is_win_os else cv2.CAP_ANY
+        self.cap = cv2.VideoCapture(self.index, api_pref)
+
+        if not config.is_win_os:
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+
         if not self.cap.isOpened():
             raise RuntimeError("CAMERA COULD NOT OPEN")
 

@@ -143,13 +143,13 @@ Enter your choice (1, 2, or 3): """)
         return
 
     if find_pos:
-        robot = MyRobot(device_name="COM8")
+        robot = MyRobot()
 
         if not robot.init_status:
             print("Robot initialization failed. Exiting...")
             return
 
-    cam = Camera(index=2, api_pref=cv2.CAP_DSHOW)
+    cam = Camera()
 
     try:
         img = None

@@ -242,8 +242,8 @@ def draw_target_key(img, H_ck, key, keyboard_map):
     return u, v
 
 def main():
-    cam = Camera(index=2, api_pref=cv2.CAP_DSHOW)
-    robot = MyRobot(device_name="COM8")
+    cam = Camera()
+    robot = MyRobot()
     print(kin.direct_kinematics(np.radians(VIEW_POS)))
     if not robot.init_status:
         print("Robot initialization failed. Exiting...")
