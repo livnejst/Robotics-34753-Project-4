@@ -39,7 +39,7 @@ def init_robot_pos(robot, cam):
 
 
 def init_ocr_thresh(img):
-    best_theshold = None
+    best_threshold = None
     best_count = -1
     best_conf_sum = -1
 
@@ -51,7 +51,7 @@ def init_ocr_thresh(img):
         conf_sum = sum(keys.values())
 
         if n_keys > best_count or (n_keys == best_count and conf_sum > best_conf_sum):
-            best_theshold = threshold
+            best_threshold = threshold
             best_count = n_keys
             best_conf_sum = conf_sum
 
@@ -60,8 +60,12 @@ def init_ocr_thresh(img):
             log_statement += f" with avg conf {conf_sum / n_keys}"
         print(log_statement)
 
+    if best_count < 1:
+        print("No keys detected at any threshold")
+        return
+
     print(
-        f"Best threshold: {best_theshold} ({best_count} keys detected with avg conf {best_conf_sum / best_count})"
+        f"Best threshold: {best_threshold} ({best_count} keys detected with avg conf {best_conf_sum / best_count})"
     )
 
 
@@ -99,6 +103,7 @@ Enter your choice (1, 2, or 3): """)
 
         if find_pos:
             init_robot_pos(robot, cam)
+            robot.wait_settled()
             img = cam.read()
 
         if find_thresh:

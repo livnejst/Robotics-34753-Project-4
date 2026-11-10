@@ -20,7 +20,7 @@ STYLUS_DOWN_PITCH = 180
 
 Q_X = 0
 A_X = 4
-Z_X = 15
+Z_X = A_X + KEY_W / 2
 
 SPACE_ROW_Y = -1 * KEY_H
 
@@ -164,12 +164,15 @@ def draw_target_key(img, H_ck, key, keyboard_map):
 
 
 def main():
-    cam = Camera()
     robot = MyRobot()
+
     print(kin.direct_kinematics(np.radians(VIEW_POS)))
+
     if not robot.init_status:
         print("Robot initialization failed. Exiting...")
         return
+
+    cam = Camera()
 
     try:
         robot.move_j(0, 0, 0, 0)
@@ -195,7 +198,7 @@ def main():
             ocr_keys = Camera.ocr_keys(img, thresh=BINARY_THRESHOLD, draw=True)
             keys = {k: v[1] for k, v in ocr_keys.items()}
 
-            if len(keys) < 4:
+            if len(keys) < 6:
                 print("Not enough keys detected. Skipping...")
                 continue
 
@@ -224,6 +227,7 @@ def main():
             print()
 
             robot.move_c(*hover_pos, STYLUS_DOWN_PITCH)
+            robot.wait_settled()
             time.sleep(1)
             robot.move_c(*press_pos, STYLUS_DOWN_PITCH)
             time.sleep(0)
