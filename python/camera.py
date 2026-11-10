@@ -1,15 +1,15 @@
 import os
 from datetime import datetime
-from config import Config
 
 import cv2
 import easyocr
 import numpy as np
+from config import Config
 
 ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 MAX_ASPECT = 2
+MIN_AREA = 5 * 5
 MIN_CONF = 0.9
-MIN_AREA = 5*5
 
 
 camera_matrix = np.array(
@@ -21,17 +21,16 @@ camera_matrix = np.array(
 )
 dist = np.array([[-0.011341169941478515, 0.03010347390242609, 0, 0, 0]])
 
-new_camera_matrix = np.array([[641.85616876,   0.        , 271.69745724],
-                          [  0.        , 650.92799605, 235.33183707],
-                          [  0.        ,   0.        ,   1.        ]])
-
 reader = easyocr.Reader(["da"], gpu=False)
+
 
 class Camera:
     def __init__(self, index=None):
         config = Config()
 
-        self.index = config.index if index is None else index      #Index of the robot camera in my PC
+        self.index = (
+            config.index if index is None else index
+        )  # Index of the robot camera in my PC
 
         api_pref = cv2.CAP_DSHOW if config.is_win_os else cv2.CAP_ANY
         self.cap = cv2.VideoCapture(self.index, api_pref)
@@ -44,16 +43,20 @@ class Camera:
 
     def read(self):
         ok, frame = self.cap.read()
+
         if not ok:
             raise RuntimeError("COULD NOT READ FRAME")
-        return frame        
+
+        return frame
 
     @staticmethod
     def ocr_keys(img, thresh, draw=False):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, binary = cv2.threshold(gray, thresh, 255, cv2.THRESH_BINARY)
 
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         if draw:
             letters_img = img.copy()
@@ -95,7 +98,13 @@ class Camera:
             if draw and conf > 0.5:
                 cv2.rectangle(letters_img, (x, y), (x + w, y + h), (0, 0, 255), 1)
                 cv2.putText(
-                    letters_img, f"{text} ({conf:.2f})", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1
+                    letters_img,
+                    f"{text} ({conf:.2f})",
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 0, 255),
+                    1,
                 )
 
             if len(text) != 1 or conf < MIN_CONF or text not in ALLOWLIST:
@@ -131,7 +140,13 @@ class Camera:
             for k, (conf, (x, y), (w, h)) in detected_keys.items():
                 cv2.rectangle(letters_img, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.putText(
-                    letters_img, f"{k} ({conf:.2f})", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
+                    letters_img,
+                    f"{k} ({conf:.2f})",
+                    (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),
+                    2,
                 )
 
             cv2.imshow("letters", letters_img)
@@ -168,7 +183,7 @@ if __name__ == "__main__":
             frame = cam.read()
             cv2.imshow("camera view", frame)
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("p"):                       # p -> take keyboard picture
+            if key == ord("p"):  # p -> take keyboard picture
                 img, path = cam.keyboard_picture()
                 cv2.imshow("keyboard picture (undistorted)", img)
             elif key == ord("q"):
