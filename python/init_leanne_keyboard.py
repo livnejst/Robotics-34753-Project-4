@@ -1,16 +1,8 @@
 import cv2
-import easyocr
 import kinematics as kin
 import numpy as np
 from camera import Camera
 from MyRobot import MyRobot
-
-ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-MAX_ASPECT = 2
-MIN_CONF = 0.95
-
-
-reader = easyocr.Reader(["en"], gpu=False)
 
 
 def init_robot_pos(robot, cam):
@@ -28,7 +20,7 @@ def init_robot_pos(robot, cam):
 
         xyz4 = kin.direct_kinematics(np.radians(q), frame=4)[0:3, 3]  # stylus joint
         xyz5 = kin.direct_kinematics(np.radians(q), frame=5)[0:3, 3]  # camera frame
-        cv2.waitKey(1000)
+
         print("Joint angles (deg):", q)
         print("Stylus xyz (mm)   :", xyz4)
         print("Camera xyz (mm)   :", xyz5)
@@ -36,7 +28,7 @@ def init_robot_pos(robot, cam):
 
         img = cam.read()
         cv2.imshow("camera view", img)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        if cv2.waitKey(1000) & 0xFF == ord("q"):
             stop = True
 
     print("Enabling motors and moving to home then last read position...")
@@ -46,79 +38,34 @@ def init_robot_pos(robot, cam):
     robot.move_j(*q)
 
 
-def read_keys(img, threshold):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
-
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    keys = {}
-
-    for contour in contours:
-        x, y, w, h = cv2.boundingRect(contour)
-
-        if h / w > MAX_ASPECT or w / h > MAX_ASPECT:
-            continue
-
-        crop = binary[y : y + h, x : x + w]
-
-        # invert to black-on-white, pad, upscale ~4x for the recognizer
-        padded = cv2.copyMakeBorder(
-            255 - crop, 15, 15, 15, 15, cv2.BORDER_CONSTANT, value=255
-        )
-        padded = cv2.resize(padded, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-
-        big_h, big_w = padded.shape
-        result = reader.recognize(
-            padded,
-            horizontal_list=[[0, big_w - 1, 0, big_h - 1]],
-            free_list=[],
-            allowlist=ALLOWLIST,
-            detail=1,
-        )
-
-        if not result or len(result) != 1:
-            continue
-
-        text, conf = result[0][1], result[0][2]
-
-        if len(text) != 1 or conf < MIN_CONF:
-            continue
-
-        if text in keys:
-            keys.pop(text, None)
-            continue
-
-        keys[text] = conf
-
-    return keys
-
-
 def init_ocr_thresh(img):
-    best_theshold = None
+    best_threshold = None
     best_count = -1
     best_conf_sum = -1
 
     for threshold in range(100, 251, 5):
-        keys = read_keys(img, threshold)
+        ocr_keys = Camera.ocr_keys(img, threshold, draw=True)
+        keys = {k: v[0] for k, v in ocr_keys.items()}
 
         n_keys = len(keys)
         conf_sum = sum(keys.values())
 
         if n_keys > best_count or (n_keys == best_count and conf_sum > best_conf_sum):
-            best_theshold = threshold
+            best_threshold = threshold
             best_count = n_keys
             best_conf_sum = conf_sum
 
+        log_statement = f"Threshold {threshold}: {n_keys} keys detected"
         if n_keys > 0:
-            print(
-                f"Threshold {threshold}: {n_keys} keys detected with avg conf {conf_sum / n_keys}"
-            )
-        else:
-            print(f"Threshold {threshold}: {n_keys} keys detected")
+            log_statement += f" with avg conf {conf_sum / n_keys}"
+        print(log_statement)
+
+    if best_count < 1:
+        print("No keys detected at any threshold")
+        return
 
     print(
-        f"Best threshold: {best_theshold} ({best_count} keys detected with avg conf {best_conf_sum / best_count})"
+        f"Best threshold: {best_threshold} ({best_count} keys detected with avg conf {best_conf_sum / best_count})"
     )
 
 
@@ -143,19 +90,20 @@ Enter your choice (1, 2, or 3): """)
         return
 
     if find_pos:
-        robot = MyRobot(device_name="COM8")
+        robot = MyRobot()
 
         if not robot.init_status:
             print("Robot initialization failed. Exiting...")
             return
 
-    cam = Camera(index=2, api_pref=cv2.CAP_DSHOW)
+    cam = Camera()
 
     try:
         img = None
 
         if find_pos:
             init_robot_pos(robot, cam)
+            robot.wait_settled()
             img = cam.read()
 
         if find_thresh:

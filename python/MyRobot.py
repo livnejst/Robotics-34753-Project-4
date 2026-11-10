@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import time
+from config import Config
 
 # --- Dynamixel SDK path bootstrap -----------------------
 
@@ -28,7 +29,6 @@ class MyRobot:
 
     PROTOCOL_VERSION = 1.0
     BAUDRATE = 1_000_000
-    DEVICENAME = "COM8"              # e.g., Windows: 'COM3' | Linux: '/dev/ttyUSB0' | Mac: '/dev/tty.usbserial-*'
 
     TORQUE_ENABLE = 1
     TORQUE_DISABLE = 0
@@ -40,7 +40,9 @@ class MyRobot:
     Z_MIN =0                    # Minimum height of all joints, in mm TODO
     # ------------------------------- Init -------------------------------------
     def __init__(self, device_name=None):
-        self.device_name = device_name or self.DEVICENAME
+        config = Config()
+        
+        self.device_name = device_name or config.device_name
 
         # Robot + kinematics state
         self.motor_ids = [1, 2, 3, 4]
@@ -251,6 +253,27 @@ class MyRobot:
         j_a = self.read_joint_angles()
         j_r = np.radians(j_a)                       # Convert to radians for kinematics
         return kin.direct_kinematics(j_r)
+
+    def wait_settled(self, tol=0.3, period=0.1, timeout=5.0):
+        count = 0
+
+        t0 = time.time()
+        prev = self.read_joint_angles()
+
+        while time.time() - t0 < timeout and count < 5:
+            time.sleep(period)
+
+            cur = self.read_joint_angles()
+
+            if np.all(np.abs(cur - prev) < tol):
+                count += 1
+            else:
+                count = 0
+
+            prev = cur
+            
+        return count >= 5
+
 
     # --------------------------- History / Macros ------------------------------
     def record_configuration(self):
