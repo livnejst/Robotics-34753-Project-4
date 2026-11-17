@@ -9,15 +9,9 @@ DH_TABLE = np.array([[math.pi/2, 0, 0, 0],  # twist, torsion
                     ]) 
 
 H45 = np.array([[1, 0, 0, -15],
-                [0, 1, 0,  45],
-                [0, 0, 1,   0 + 13.5],
-                [0, 0, 0,   1],
-                ], dtype=float)
-
-H44 = np.array([[1, 0, 0, 0],
-                [0, 1, 0,  30],
-                [0, 0, 1,   0],
-                [0, 0, 0,   1],
+                [0, 1, 0, 45],
+                [0, 0, 1, 13.5], # Because there is a little more offset than what the project description stated
+                [0, 0, 0, 1],
                 ], dtype=float)
 
 def dh_matrix(t, r, a, d):

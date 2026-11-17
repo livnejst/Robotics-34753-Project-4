@@ -1,34 +1,31 @@
 import time
-import cv2
-import numpy as np
 from MyRobot import MyRobot
-import kinematics as kin
-from camera import Camera
 
-POINTS = [
-    (180,    0, 80,  90),   # 1: front, high, stylus horizontal
-    (150,    0, 50,  90),   # 2: front, lower
-    (150,    0, 30, 180),   # 3: stylus down (like pressing a key)
-    (120,   80, 30, 180),   # 4: y positive (base rotation)
-    (100, -100, 60, 135),   # 5: y negative, tilted stylus
-]
+PERIOD = 5.0          # seconds between readings
+TORQUE_OFF = True   # True -> release the motors so you can move the arm by hand
 
-robot = MyRobot()                                   # moves to (0, 0, 0, 0)
-cam = Camera()
-cam.cap.set(cv2.CAP_PROP_SETTINGS, 1)
+robot = MyRobot()     # moves to (0, 0, 0, 0)
 if robot.init_status:
     try:
-        for i, (x, y, z, pitch) in enumerate(POINTS, start=1):
-            print(f"\n--- Point {i}: target ({x}, {y}, {z}), pitch {pitch} ---")
-            robot.move_c(x, y, z, pitch)
-            print("Joint angles (deg):", robot.read_joint_angles())
-            print("read_ee_position  :", robot.read_ee_position()[0:3, 3])
+        if TORQUE_OFF:
+            input("Hold the arm and press Enter to release torque...")
+            for dxl_id in robot.motor_ids:
+                robot._write1(dxl_id, robot.ADDR_MX_TORQUE_ENABLE, robot.TORQUE_DISABLE)
 
-            while cv2.waitKey(1) == -1:
-                cv2.imshow("robot camera", cam.read())
-            robot.move_j(0, 0, 0, 0)                # back to vertical (safe path)
+        print("Reading joint angles (Ctrl+C to stop)...\n")
+        while True:
+            try:
+                q = robot.read_joint_angles()
+            except IOError as e:
+                print(f"Read error: {e}")
+                time.sleep(PERIOD)
+                continue
+
+            print("  ".join(f"Joint {i}: {a:7.2f}°" for i, a in enumerate(q, start=1)))
+            time.sleep(PERIOD)
+    except KeyboardInterrupt:
+        print("\nStopped.")
     finally:
-        cam.cap.release()
-        cv2.destroyAllWindows()
-        input("Hold the arm and press Enter to release torque...")
+        if not TORQUE_OFF:
+            input("Hold the arm and press Enter to release torque...")
         robot.disable_motors()

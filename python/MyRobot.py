@@ -37,7 +37,7 @@ class MyRobot:
     TICKS_PER_DEG = 1.0 / 0.29        # ≈ 3.448275862 ticks per degree
     DEG_PER_TICK = 0.29
 
-    Z_MIN = -100                    # Minimum height of all joints, in mm TODO
+    Z_MIN = -20                       # Minimum height of all joints, in mm. It is for the robot not trying to go trough the table
     # ------------------------------- Init -------------------------------------
     def __init__(self, device_name=None):
         config = Config()
@@ -51,10 +51,10 @@ class MyRobot:
         self.joint_pos = np.zeros((4, 4))
         self.use_smooth_speed_flag = False
 
-        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there.
-        self.joint_limits = np.array([[-300, 300], [-300, 300], [-300, 300], [-300, 300]])
+        # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there + some security space.
+        self.joint_limits = np.array([[-95, 50], [-130, 130], [-90, 110], [-140, 140]])
 
-        # Motor offsets (deg). We have calculated them
+        # Motor offsets (deg). We have calculated them for the robot we were using
         self.joint_offsets = np.array([150, 147, 133 + 13.45, 150], dtype=float)
 
         self.joint_angle_error = np.array([0.0, 0.0, 0.0, 0.0])
