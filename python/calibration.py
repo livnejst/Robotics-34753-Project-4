@@ -41,7 +41,7 @@ cv2.destroyAllWindows()
 
 
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
-img = cv2.imread('calib_images/calib_20261029_094456_838.png')
+img = cv2.imread(images[0])
 h,  w = img.shape[:2]
 newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
 

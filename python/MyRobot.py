@@ -37,7 +37,7 @@ class MyRobot:
     TICKS_PER_DEG = 1.0 / 0.29        # ≈ 3.448275862 ticks per degree
     DEG_PER_TICK = 0.29
 
-    Z_MIN =0                    # Minimum height of all joints, in mm TODO
+    Z_MIN = -100                    # Minimum height of all joints, in mm TODO
     # ------------------------------- Init -------------------------------------
     def __init__(self, device_name=None):
         config = Config()
@@ -52,10 +52,10 @@ class MyRobot:
         self.use_smooth_speed_flag = False
 
         # deg limits: Measured by us by taking the robot to its mechanical limits and measuring the degrees there.
-        self.joint_limits = np.array([[-110, 70], [-110, 100], [-130, 130], [-95, 70]])
+        self.joint_limits = np.array([[-300, 300], [-300, 300], [-300, 300], [-300, 300]])
 
         # Motor offsets (deg). We have calculated them
-        self.joint_offsets = np.array([150, 147, 133, 150], dtype=float)
+        self.joint_offsets = np.array([150, 147, 133 + 13.45, 150], dtype=float)
 
         self.joint_angle_error = np.array([0.0, 0.0, 0.0, 0.0])
         self.init_status = 0
@@ -315,7 +315,7 @@ class MyRobot:
 # Demonstrates how to move the robot joints into desired joint positions [degrees]
 # You might need to adjust the offsets in the code above to make the zero point suit your needs.
 # Just comment out the code snippet, input desired joint angles in robot.move_j() and run.
-'''
+
 
 if __name__ == "__main__":
     robot = MyRobot()
@@ -338,7 +338,7 @@ if __name__ == "__main__":
         finally:
             pass
             #robot.disable_motors()
-'''
+
 
 #Example 2:
 #Demonstrates how to move the robot joints into desired a list of joint positions [degrees]

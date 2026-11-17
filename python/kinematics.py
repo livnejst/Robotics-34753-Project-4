@@ -3,13 +3,19 @@ import math
 
 # --- Constants of our robot ---
 DH_TABLE = np.array([[math.pi/2, 0, 0, 0],  # twist, torsion
-                     [0, 93, 93, 50],       # alfa, link length
+                     [0, 93, 93, 55],       # alfa, link length
                      [50, 0, 0, 0],         # d, link offset
                      [0, math.pi/2, 0, 0],  # offsets
                     ]) 
 
 H45 = np.array([[1, 0, 0, -15],
                 [0, 1, 0,  45],
+                [0, 0, 1,   0 + 13.5],
+                [0, 0, 0,   1],
+                ], dtype=float)
+
+H44 = np.array([[1, 0, 0, 0],
+                [0, 1, 0,  30],
                 [0, 0, 1,   0],
                 [0, 0, 0,   1],
                 ], dtype=float)

@@ -7,22 +7,22 @@ from camera import Camera, camera_matrix, dist
 from MyRobot import MyRobot
 
 # TODO: find keyboard viewing position
-VIEW_POS = (7.47, 16.85, -74.71, -103.6)
+VIEW_POS = (-2.1   , 60.93, -119.48 , -92.29)
 
-KEY_W, KEY_H = 15, 15
+KEY_W, KEY_H = 19, 17
 
 KEY_OFFSET_X, KEY_OFFSET_Y = 5, -5
 
-HOVER_OFFSET_Z = 10
-PRESS_OFFSET_Z = -5
+HOVER_OFFSET_Z = 4
+PRESS_OFFSET_Z = -9
 
-STYLUS_DOWN_PITCH = 180
+STYLUS_DOWN_PITCH = 160
 
 Q_X = 0
 A_X = 4
 Z_X = A_X + KEY_W / 2
 
-SPACE_ROW_Y = -1 * KEY_H
+SPACE_ROW_Y = -1 * KEY_H - 8
 
 TOP_ROW_Z = 0
 MID_ROW_Z = 0
@@ -35,9 +35,10 @@ BOT_ROW_CHARS = "ZXCVBNM"
 
 IMAGE_PATH = "python/keyboard_images/keyboard_20261029_103154_raw.png"
 
-BINARY_THRESHOLD = 195
+BINARY_THRESHOLD = 100
 
-PHRASE = "hello world"
+
+PHRASE = "hhello world"
 
 H_5C = np.array([[0, 0, 1, 0], [0, -1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]], dtype=float)
 
@@ -182,6 +183,8 @@ def main():
         phrase = input(f"Enter phrase to type (default: '{PHRASE}'): ") or PHRASE
         phrase = phrase.strip().upper()
 
+        found = False
+
         for key in phrase:
             if key not in keyboard_map:
                 print(f"Key '{key}' not found in keyboard map. Skipping...")
@@ -195,12 +198,16 @@ def main():
             img = cam.read()
             # img = cv2.imread(IMAGE_PATH)
 
-            ocr_keys = Camera.ocr_keys(img, thresh=BINARY_THRESHOLD, draw=True)
-            keys = {k: v[1] for k, v in ocr_keys.items()}
+            if not found:
+                ocr_keys = Camera.ocr_keys(img, thresh=BINARY_THRESHOLD, draw=True)
+                keys = {k: v[1] for k, v in ocr_keys.items()}
 
             if len(keys) < 6:
+                found = False
                 print("Not enough keys detected. Skipping...")
                 continue
+            else:
+                found = True
 
             print(f"Detected {len(keys)} keys")
 
